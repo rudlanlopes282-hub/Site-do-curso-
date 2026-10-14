@@ -1,66 +1,55 @@
-export default async function handler(req, res) {
-    res.setHeader('Access-Control-Allow-Credentials', true);
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST');
-    res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
+const axios = require('axios');
 
-    if (req.method === 'OPTIONS') {
-        res.status(200).end();
-        return;
+const CLIENT_ID = 'f21ac055-5506-4b0d-b357-2b0626a5ed26';
+const CLIENT_SECRET = '05e92b53-a025-4cab-b1be-269f0aa46226';
+const BASE_URL = "https://api.syncpayments.com.br/api/partner/v1";
+
+module.exports = async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Método não permitido' });
+  }
+
+  try {
+    const { name, email, cpf, amount, description } = req.body || {};
+
+    const authRes = await axios.post(`${BASE_URL}/auth-token`, {
+      client_id: CLIENT_ID,
+      client_secret: CLIENT_SECRET
+    });
+
+    const token = authRes.data.access_token || authRes.data.token;
+
+    if (!token) {
+      return res.status(400).json({ error: "Falha ao obter token na SyncPay" });
     }
 
-    if (req.method !== 'POST') {
-        return res.status(405).json({ error: 'Método não permitido' });
-    }
+    const pixRes = await axios.post(`${BASE_URL}/cash-in`, {
+      amount: amount || 12.00,
+      description: description || "Automação Express",
+      client: {
+        name: name || "Cliente",
+        email: email || "cliente@email.com",
+        cpf: cpf ? cpf.replace(/\D/g, '') : "00000000000"
+      }
+    }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
 
-    const { amount, description, payer } = req.body;
+    const pixCode = pixRes.data.pix_code || pixRes.data.qrcode || pixRes.data.emv;
 
-    const CLIENT_ID = 'f21ac055-5506-4b0d-b357-2b0626a5ed26';
-    const CLIENT_SECRET = '05e92b53-a025-4cab-b1be-269f0aa46226';
-
-    try {
-        // 1. Obter Token OAuth na SyncPay
-        const tokenResponse = await fetch('https://api.syncpay.com.br/oauth/token', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ clientId: CLIENT_ID, clientSecret: CLIENT_SECRET })
-        });
-        
-        const tokenData = await tokenResponse.json();
-        const accessToken = tokenData.access_token || tokenData.token;
-
-        if (!accessToken) {
-            return res.status(400).json({ error: 'Erro de autenticação na SyncPay', details: tokenData });
-        }
-
-        // 2. Criar a Cobrança Pix
-        const pixResponse = await fetch('https://api.syncpay.com.br/v1/pix/charge', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${accessToken}`
-            },
-            body: JSON.stringify({
-                amount: Number(amount),
-                description: description,
-                payer: {
-                    name: payer.name,
-                    email: payer.email,
-                    taxId: payer.taxId
-                }
-            })
-        });
-
-        const pixData = await pixResponse.json();
-
-        if (!pixResponse.ok) {
-            return res.status(pixResponse.status).json({ error: 'Erro retornado pela SyncPay', details: pixData });
-        }
-
-        return res.status(200).json(pixData);
-
-    } catch (error) {
-        console.error('Erro interno:', error);
-        return res.status(500).json({ error: 'Erro interno ao gerar o Pix', details: error.message });
-    }
-}
+    return res.status(200).json({ pix_code: pixCode });
+  } catch (error) {
+    console.error("Erro na integração SyncPay:", error.response?.data || error.message);
+    return res.status(500).json({ 
+      error: error.response?.data?.message || error.response?.data || error.message 
+    });
+  }
+};
