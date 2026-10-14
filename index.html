@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automação Express | Crie Seu Próprio Bot no Telegram</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            purple: '#7c3aed',
+                            purpleLight: '#8b5cf6',
+                            blue: '#2563eb',
+                            cyan: '#06b6d4',
+                            emerald: '#10b981',
+                            dark: '#0a0d14',
+                            card: '#121824',
+                            border: '#1f293d',
+                        }
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'glow': 'glow 2s ease-in-out infinite alternate',
+                        'float': 'float 4s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        glow: {
+                            '0%': { boxShadow: '0 0 15px rgba(124, 58, 237, 0.4)' },
+                            '100%': { boxShadow: '0 0 30px rgba(16, 185, 129, 0.6)' },
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0px)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #06090e;
+            color: #f3f4f6;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #a78bfa 0%, #38bdf8 50%, #34d399 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .gradient-border {
+            position: relative;
+            border-radius: 1rem;
+            background: linear-gradient(135deg, rgba(124, 58, 237, 0.3), rgba(6, 182, 212, 0.2));
+            padding: 1px;
+        }
+
+        .glass-card {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .glass-card-hover {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glass-card-hover:hover {
+            transform: translateY(-4px);
+            border-color: rgba(139, 92, 246, 0.4);
+            box-shadow: 0 12px 30px -10px rgba(124, 58, 237, 0.25);
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #06090e;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-purple-500 selection:text-white">
+
+    <!-- HEADER NAV -->
+    <header class="sticky top-0 z-40 w-full glass-card border-b border-gray-800/60 py-3.5 px-4 md:px-8">
+        <div class="max-w-6xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-600 to-cyan-400 p-0.5 shadow-lg shadow-purple-500/20">
+                    <div class="w-full h-full bg-gray-950 rounded-[10px] flex items-center justify-center">
+                        <i data-lucide="bot" class="w-5 h-5 text-cyan-400"></i>
+                    </div>
+                </div>
+                <div>
+                    <span class="font-extrabold text-lg tracking-tight text-white block leading-none">Automação<span class="text-purple-400">Express</span></span>
+                    <span class="text-[10px] text-gray-400 font-medium tracking-wider uppercase">Treinamento VIP</span>
+                </div>
+            </div>
+
+            <button onclick="openVerificationModal()" class="hidden sm:flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold text-xs px-4 py-2.5 rounded-lg transition shadow-md shadow-purple-600/20 active:scale-95">
+                <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400"></i>
+                <span>Verificar & Acessar</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- HERO SECTION -->
+    <section class="relative pt-12 pb-16 md:pt-20 md:pb-24 px-4 overflow-hidden">
+        <!-- Ambient background glows -->
+        <div class="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[300px] bg-purple-600/20 blur-[120px] rounded-full pointer-events-none"></div>
+        <div class="absolute top-1/3 right-10 w-[300px] h-[300px] bg-cyan-500/15 blur-[100px] rounded-full pointer-events-none"></div>
+
+        <div class="max-w-4xl mx-auto text-center relative z-10">
+            <!-- Badge -->
+            <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full glass-card border border-purple-500/30 text-purple-300 text-xs font-semibold mb-6 shadow-inner">
+                <span class="flex h-2 w-2 rounded-full bg-emerald-400 animate-ping"></span>
+                <span>Vagas Abertas • Estrutura Pronta 2026</span>
+            </div>
+
+            <!-- Main Headline -->
+            <h1 class="text-3xl sm:text-5xl md:text-6xl font-black tracking-tight text-white leading-tight sm:leading-tight md:leading-tight mb-6">
+                Crie Seu Próprio Bot de Vendas no Telegram e <span class="gradient-text">Fature 24h no Automático</span>
+            </h1>
+
+            <!-- Subheadline -->
+            <p class="text-base sm:text-xl text-gray-300 max-w-2xl mx-auto mb-8 font-normal leading-relaxed">
+                Aprenda o passo a passo 100% prático direto pelo <b>celular ou computador</b>. Sem complicação, sem precisar programar e com <b>packs prontos para rodar</b>!
+            </p>
+
+            <!-- CTA Primary Button -->
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-md mx-auto mb-10">
+                <button onclick="openVerificationModal()" class="w-full sm:w-auto flex-1 group relative inline-flex items-center justify-center gap-3 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-gray-950 font-bold text-base sm:text-lg px-8 py-4 rounded-xl shadow-xl shadow-emerald-500/20 hover:shadow-emerald-500/35 transition-all duration-300 transform hover:-translate-y-0.5 active:scale-95">
+                    <i data-lucide="check-circle" class="w-6 h-6 text-gray-950 group-hover:scale-110 transition-transform"></i>
+                    <span>VERIFICAR & ACESSAR AULAS</span>
+                    <i data-lucide="arrow-right" class="w-5 h-5 text-gray-950 group-hover:translate-x-1 transition-transform"></i>
+                </button>
+            </div>
+
+            <!-- Guarantee Badges -->
+            <div class="flex flex-wrap items-center justify-center gap-6 text-xs text-gray-400 font-medium">
+                <div class="flex items-center gap-1.5">
+                    <i data-lucide="smartphone" class="w-4 h-4 text-purple-400"></i>
+                    <span>Funciona no Celular e PC</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <i data-lucide="zap" class="w-4 h-4 text-yellow-400"></i>
+                    <span>Configuração em minutos</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <i data-lucide="lock" class="w-4 h-4 text-emerald-400"></i>
+                    <span>Acesso Imediato</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FEATURES & BENEFITS -->
+    <section class="py-12 md:py-16 px-4 bg-gray-950/60 border-y border-gray-800/50">
+        <div class="max-w-6xl mx-auto">
+            <div class="text-center max-w-2xl mx-auto mb-12">
+                <h2 class="text-2xl sm:text-3xl font-bold text-white mb-3">Tudo o que você vai aprender e receber</h2>
+                <p class="text-gray-400 text-sm sm:text-base">Treinamento desenvolvido para quem quer resultados rápidos sem perder tempo com teorias chatas.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- Feature 1 -->
+                <div class="glass-card p-6 rounded-2xl glass-card-hover">
+                    <div class="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-4">
+                        <i data-lucide="bot" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-white mb-2">Bot do Zero</h3>
+                    <p class="text-gray-400 text-xs sm:text-sm leading-relaxed">Passo a passo visual de como criar e personalizar seu robô no Telegram sem digitar uma linha de código.</p>
+                </div>
+
+                <!-- Feature 2 -->
+                <div class="glass-card p-6 rounded-2xl glass-card-hover">
+                    <div class="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 mb-4">
+                        <i data-lucide="refresh-cw" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-white mb-2">Funil 24 Horas</h3>
+                    <p class="text-gray-400 text-xs sm:text-sm leading-relaxed">Monte a sequência perfeita de vendas automática que atende clientes, envia mensagens e vende dia e noite.</p>
+                </div>
+
+                <!-- Feature 3 -->
+                <div class="glass-card p-6 rounded-2xl glass-card-hover">
+                    <div class="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-4">
+                        <i data-lucide="folder-check" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-white mb-2">Packs Prontos</h3>
+                    <p class="text-gray-400 text-xs sm:text-sm leading-relaxed">Modelos de mensagens, imagens e estruturas validadas prontas para apenas copiar, colar e colocar para rodar.</p>
+                </div>
+
+                <!-- Feature 4 -->
+                <div class="glass-card p-6 rounded-2xl glass-card-hover">
+                    <div class="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-4">
+                        <i data-lucide="shield-check" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-white mb-2">Checkout Integrado</h3>
+                    <p class="text-gray-400 text-xs sm:text-sm leading-relaxed">Aprenda a conectar os melhores gateways Pix com aprovação imediata e entrega automática de acesso.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- OFFERS / PRICING SECTION -->
+    <section class="py-16 px-4 relative">
+        <div class="max-w-5xl mx-auto">
+            <div class="text-center max-w-2xl mx-auto mb-12">
+                <span class="text-purple-400 font-semibold text-xs uppercase tracking-wider">Escolha Sua Opção</span>
+                <h2 class="text-2xl sm:text-4xl font-extrabold text-white mt-1 mb-3">Planos e Opções de Acesso</h2>
+                <p class="text-gray-400 text-sm sm:text-base">Selecione a opção ideal para o seu momento e libere seu acesso direto no robô oficial.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
+                <!-- Plan 1: Curso Completo -->
+                <div class="glass-card p-6 sm:p-8 rounded-2xl border border-gray-800 flex flex-col justify-between relative">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="px-3 py-1 bg-gray-800 text-gray-300 text-xs font-semibold rounded-full">Plano Básico</span>
+                            <span class="text-xs text-gray-400">Acesso Vitalício</span>
+                        </div>
+                        <h3 class="text-2xl font-bold text-white mb-2">Curso Completo 📚</h3>
+                        <p class="text-gray-400 text-xs sm:text-sm mb-6">Ideal para quem quer aprender a criar e personalizar sua própria estrutura do zero.</p>
+                        
+                        <div class="mb-6 pb-6 border-b border-gray-800">
+                            <div class="flex items-baseline gap-1">
+                                <span class="text-xs text-gray-400">por apenas</span>
+                                <span class="text-3xl font-extrabold text-white">R$ 12,00</span>
+                            </div>
+                        </div>
+
+                        <ul class="space-y-3 mb-8 text-xs sm:text-sm text-gray-300">
+                            <li class="flex items-center gap-2">
+                                <i data-lucide="check" class="w-4 h-4 text-emerald-400 flex-shrink-0"></i>
+                                <span>Curso em vídeo passo a passo</span>
+                            </li>
+                            <li class="flex items-center gap-2">
+                                <i data-lucide="check" class="w-4 h-4 text-emerald-400 flex-shrink-0"></i>
+                                <span>Criação de bots e funil de vendas</span>
+                            </li>
+                            <li class="flex items-center gap-2">
+                                <i data-lucide="check" class="w-4 h-4 text-emerald-400 flex-shrink-0"></i>
+                                <span>Integração de pagamento via Pix</span>
+                            </li>
+                            <li class="flex items-center gap-2 text-gray-500">
+                                <i data-lucide="x" class="w-4 h-4 text-gray-600 flex-shrink-0"></i>
+                                <span>Pack de mídias e conteúdos exclusivos</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <button onclick="openVerificationModal()" class="w-full py-3.5 px-4 rounded-xl bg-gray-800 hover:bg-gray-700 text-white font-bold text-sm transition text-center flex items-center justify-center gap-2">
+                        <span>Escolher Curso Básico</span>
+                        <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                    </button>
+                </div>
+
+                <!-- Plan 2: Combo Curso + Pack (Highlighted) -->
+                <div class="gradient-border glass-card p-6 sm:p-8 rounded-2xl flex flex-col justify-between relative shadow-2xl shadow-purple-900/30">
+                    <!-- Recommended Badge -->
+                    <div class="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-purple-600 to-emerald-500 text-gray-950 font-black text-[11px] uppercase tracking-wider px-4 py-1 rounded-full shadow-lg">
+                        🔥 Mais Vendido & Recomendado
+                    </div>
+
+                    <div>
+                        <div class="flex items-center justify-between mb-4 mt-2">
+                            <span class="px-3 py-1 bg-purple-500/20 text-purple-300 text-xs font-semibold rounded-full border border-purple-500/30">Combo VIP Completo</span>
+                            <span class="text-xs text-emerald-400 font-semibold">Pronto p/ Faturar</span>
+                        </div>
+                        <h3 class="text-2xl font-bold text-white mb-2">Curso + Pack Exclusivo 🚀</h3>
+                        <p class="text-gray-400 text-xs sm:text-sm mb-6">A opção mais rápida para faturar: leva o curso + robôs e modelos prontos de nichos de altíssima conversão!</p>
+
+                        <div class="mb-6 pb-6 border-b border-gray-800">
+                            <div class="flex items-baseline gap-1">
+                                <span class="text-xs text-gray-400">por apenas</span>
+                                <span class="text-4xl font-black text-emerald-400">R$ 23,60</span>
+                            </div>
+                        </div>
+
+                        <ul class="space-y-3 mb-8 text-xs sm:text-sm text-gray-200">
+                            <li class="flex items-center gap-2">
+                                <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400 flex-shrink-0"></i>
+                                <span class="font-medium">Tudo do Curso Completo Passo a Passo</span>
+                            </li>
+                            <li class="flex items-center gap-2">
+                                <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400 flex-shrink-0"></i>
+                                <span class="font-medium">Pack com robôs e estruturas prontas para copiar & colar</span>
+                            </li>
+                            <li class="flex items-center gap-2">
+                                <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400 flex-shrink-0"></i>
+                                <span class="font-medium">Conteúdos e mídias de altíssima conversão 🔞🌶️</span>
+                            </li>
+                            <li class="flex items-center gap-2">
+                                <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400 flex-shrink-0"></i>
+                                <span class="font-medium">Suporte e Atualizações inclusas</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <button onclick="openVerificationModal()" class="w-full py-4 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-gray-950 font-black text-sm transition text-center shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 transform active:scale-95">
+                        <span>OBTER COMBO COMPLETO + PACK</span>
+                        <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SOCIAL PROOF / TESTIMONIALS -->
+    <section class="py-12 px-4 bg-gray-950/40 border-t border-gray-800/40">
+        <div class="max-w-5xl mx-auto">
+            <h3 class="text-xl font-bold text-center text-white mb-8">O que dizem os nossos alunos</h3>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                <!-- Testimonial 1 -->
+                <div class="glass-card p-5 rounded-xl text-xs sm:text-sm">
+                    <div class="flex items-center gap-1 text-amber-400 mb-3">
+                        <i data-lucide="star" class="w-4 h-4 fill-amber-400"></i>
+                        <i data-lucide="star" class="w-4 h-4 fill-amber-400"></i>
+                        <i data-lucide="star" class="w-4 h-4 fill-amber-400"></i>
+                        <i data-lucide="star" class="w-4 h-4 fill-amber-400"></i>
+                        <i data-lucide="star" class="w-4 h-4 fill-amber-400"></i>
+                    </div>
+                    <p class="text-gray-300 mb-4">"Montei meu bot em menos de 30 minutos usando o celular. O pack pronto valeu cada centavo!"</p>
+                    <div class="font-semibold text-white">— Lucas M.</div>
+                </div>
+
+                <!-- Testimonial 2 -->
+                <div class="glass-card p-5 rounded-xl text-xs sm:text-sm">
+                    <div class="flex items-center gap-1 text-amber-400 mb-3">
+                        <i data-lucide="star" class="w-4 h-4 fill-amber-400"></i>
+                        <i data-lucide="star" class="w-4 h-4 fill-amber-400"></i>
+                        <i data-lucide="star" class="w-4 h-4 fill-amber-400"></i>
+                        <i data-lucide="star" class="w-4 h-4 fill-amber-400"></i>
+                        <i data-lucide="star" class="w-4 h-4 fill-amber-400"></i>
+                    </div>
+                    <p class="text-gray-300 mb-4">"Não entendia nada de automação. As aulas são bem diretas e a entrega pelo Telegram é instantânea."</p>
+                    <div class="font-semibold text-white">— Rafael S.</div>
+                </div>
+
+                <!-- Testimonial 3 -->
+                <div class="glass-card p-5 rounded-xl text-xs sm:text-sm">
+                    <div class="flex items-center gap-1 text-amber-400 mb-3">
+                        <i data-lucide="star" class="w-4 h-4 fill-amber-400"></i>
+                        <i data-lucide="star" class="w-4 h-4 fill-amber-400"></i>
+                        <i data-lucide="star" class="w-4 h-4 fill-amber-400"></i>
+                        <i data-lucide="star" class="w-4 h-4 fill-amber-400"></i>
+                        <i data-lucide="star" class="w-4 h-4 fill-amber-400"></i>
+                    </div>
+                    <p class="text-gray-300 mb-4">"O suporte é nota 10 e o Pix cai direto na conta assim que o cliente compra pelo bot."</p>
+                    <div class="font-semibold text-white">— Amanda V.</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ ACCORDION -->
+    <section class="py-12 px-4 max-w-3xl mx-auto w-full">
+        <h2 class="text-2xl font-bold text-center text-white mb-8">Perguntas Frequentes</h2>
+        
+        <div class="space-y-3">
+            <!-- FAQ 1 -->
+            <div class="glass-card rounded-xl overflow-hidden">
+                <button onclick="toggleFaq(1)" class="w-full p-4 text-left font-semibold text-sm sm:text-base text-white flex items-center justify-between">
+                    <span>Preciso de um computador para fazer o curso?</span>
+                    <i id="faq-icon-1" data-lucide="chevron-down" class="w-5 h-5 text-purple-400 transition-transform"></i>
+                </button>
+                <div id="faq-content-1" class="hidden px-4 pb-4 text-xs sm:text-sm text-gray-400 leading-relaxed">
+                    Não! Você pode aprender, criar e gerenciar seu bot inteiramente pelo seu celular (Android ou iPhone) ou pelo computador, como preferir.
+                </div>
+            </div>
+
+            <!-- FAQ 2 -->
+            <div class="glass-card rounded-xl overflow-hidden">
+                <button onclick="toggleFaq(2)" class="w-full p-4 text-left font-semibold text-sm sm:text-base text-white flex items-center justify-between">
+                    <span>Como recebo o acesso após a compra?</span>
+                    <i id="faq-icon-2" data-lucide="chevron-down" class="w-5 h-5 text-purple-400 transition-transform"></i>
+                </button>
+                <div id="faq-content-2" class="hidden px-4 pb-4 text-xs sm:text-sm text-gray-400 leading-relaxed">
+                    O acesso é liberado instantaneamente! Assim que o Pix for confirmado pelo bot no Telegram, ele te enviará o link do canal VIP privado das aulas.
+                </div>
+            </div>
+
+            <!-- FAQ 3 -->
+            <div class="glass-card rounded-xl overflow-hidden">
+                <button onclick="toggleFaq(3)" class="w-full p-4 text-left font-semibold text-sm sm:text-base text-white flex items-center justify-between">
+                    <span>Preciso saber programar?</span>
+                    <i id="faq-icon-3" data-lucide="chevron-down" class="w-5 h-5 text-purple-400 transition-transform"></i>
+                </button>
+                <div id="faq-content-3" class="hidden px-4 pb-4 text-xs sm:text-sm text-gray-400 leading-relaxed">
+                    Zero código! O método ensina a usar plataformas visuais e simples onde você só clica, configura as respostas e publica seu robô.
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="mt-auto py-8 px-4 border-t border-gray-800/80 bg-gray-950 text-center text-xs text-gray-500">
+        <div class="max-w-4xl mx-auto space-y-3">
+            <div class="flex items-center justify-center gap-2 text-gray-400 font-medium">
+                <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400"></i>
+                <span>Ambiente Seguro • Acesso via Telegram</span>
+            </div>
+            <p>© 2026 Automação Express. Todos os direitos reservados.</p>
+        </div>
+    </footer>
+
+    <!-- VERIFICATION MODAL POPUP -->
+    <div id="verificationModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-950/80 backdrop-blur-md hidden transition-opacity duration-300">
+        <div class="glass-card border border-purple-500/30 w-full max-w-sm rounded-2xl p-6 text-center shadow-2xl relative animate-float">
+            
+            <!-- Modal Header Icon -->
+            <div class="w-14 h-14 bg-gradient-to-tr from-purple-600 to-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4 p-0.5 shadow-lg shadow-purple-500/30">
+                <div class="w-full h-full bg-gray-950 rounded-full flex items-center justify-center">
+                    <i data-lucide="shield-check" class="w-7 h-7 text-emerald-400"></i>
+                </div>
+            </div>
+
+            <h3 class="text-xl font-extrabold text-white mb-2">Verificação Anti-Bot</h3>
+            <p class="text-xs text-gray-300 mb-6 leading-relaxed">
+                Para garantir a segurança e liberar seu desconto exclusivo no aplicativo, clique no botão abaixo para abrir o robô no Telegram.
+            </p>
+
+            <!-- Verification Status Step -->
+            <div id="verificationStep" class="mb-6 p-3 bg-gray-900/80 rounded-xl border border-gray-800 text-left text-xs space-y-2">
+                <div class="flex items-center gap-2 text-emerald-400 font-medium">
+                    <i data-lucide="check" class="w-4 h-4"></i>
+                    <span>Conexão criptografada (SSL)</span>
+                </div>
+                <div class="flex items-center gap-2 text-emerald-400 font-medium">
+                    <i data-lucide="check" class="w-4 h-4"></i>
+                    <span>Bot oficial Automação Express</span>
+                </div>
+            </div>
+
+            <!-- Action Button inside Modal -->
+            <a id="telegramRedirectBtn" href="https://t.me/AutExpress_bot?start=site" target="_blank" onclick="closeVerificationModal()" class="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-gray-950 font-black text-sm transition shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2">
+                <i data-lucide="send" class="w-4 h-4"></i>
+                <span>ABRIR BOT NO TELEGRAM</span>
+            </a>
+
+            <button onclick="closeVerificationModal()" class="mt-3 text-xs text-gray-500 hover:text-gray-300 transition">
+                Cancelar
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        // FAQ Toggle Logic
+        function toggleFaq(index) {
+            const content = document.getElementById(`faq-content-${index}`);
+            const icon = document.getElementById(`faq-icon-${index}`);
+            
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                icon.style.transform = 'rotate(180deg)';
+            } else {
+                content.classList.add('hidden');
+                icon.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        // Modal Logic
+        function openVerificationModal() {
+            const modal = document.getElementById('verificationModal');
+            modal.classList.remove('hidden');
+        }
+
+        function closeVerificationModal() {
+            const modal = document.getElementById('verificationModal');
+            modal.classList.add('hidden');
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('verificationModal');
+            if (event.target === modal) {
+                closeVerificationModal();
+            }
+        }
+    </script>
+</body>
+</html>
