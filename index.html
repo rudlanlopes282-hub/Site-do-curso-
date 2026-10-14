@@ -102,7 +102,7 @@
                 </div>
             </div>
 
-            <button onclick="scrollToPricing()" class="hidden sm:flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold text-xs px-4 py-2.5 rounded-lg transition shadow-md shadow-purple-600/20 active:scale-95">
+            <button onclick="scrollToPricing()" class="hidden sm:flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold text-xs px-4 py-2.5 rounded-lg transition shadow-md shadow-purple-600/20 active:scale-95 cursor-pointer">
                 <i data-lucide="zap" class="w-4 h-4 text-emerald-400"></i>
                 <span>Garantir Acesso</span>
             </button>
@@ -268,7 +268,7 @@
                     <h3 id="modalProductName" class="text-lg font-extrabold text-white">Finalizar Pedido</h3>
                     <p id="modalProductPrice" class="text-xs text-emerald-400 font-semibold">R$ 0,00</p>
                 </div>
-                <button onclick="closeCheckoutModal()" class="text-gray-400 hover:text-white p-1">
+                <button onclick="closeCheckoutModal()" class="text-gray-400 hover:text-white p-1 cursor-pointer">
                     <i data-lucide="x" class="w-5 h-5"></i>
                 </button>
             </div>
@@ -321,10 +321,6 @@
                         </button>
                     </div>
                 </div>
-
-                <div class="pt-2">
-                    <p class="text-[11px] text-amber-400 animate-pulse">Aguardando pagamento... Assim que pagar, o acesso será liberado automaticamente.</p>
-                </div>
             </div>
 
             <!-- Success Stage -->
@@ -349,7 +345,6 @@
 
         let currentProduct = '';
         let currentPrice = 0;
-        let checkInterval = null;
 
         function scrollToPricing() {
             document.getElementById('pricing').scrollIntoView({ behavior: 'smooth' });
@@ -373,7 +368,6 @@
 
         function closeCheckoutModal() {
             document.getElementById('checkoutModal').classList.add('hidden');
-            if (checkInterval) clearInterval(checkInterval);
         }
 
         async function generatePix(event) {
@@ -387,30 +381,30 @@
             document.getElementById('checkoutLoadingStage').classList.remove('hidden');
 
             try {
-                // Chama a rota serverless da Vercel
                 const response = await fetch('/api/gerar-pix', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
+                        name: name,
+                        email: email,
+                        cpf: cpf,
                         amount: currentPrice,
-                        description: currentProduct,
-                        payer: { name: name, email: email, taxId: cpf }
+                        description: currentProduct
                     })
                 });
 
-                const pixData = await response.json();
+                const data = await response.json();
 
-                if (pixData.qrCode || pixData.pixCopiaECola || pixData.payload) {
-                    const qrCodeImg = pixData.qrCodeBase64 || pixData.qrCode || `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(pixData.pixCopiaECola || pixData.payload)}`;
-                    const copyCode = pixData.pixCopiaECola || pixData.payload;
+                if (data.pix_code) {
+                    const qrCodeImg = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.pix_code)}`;
 
                     document.getElementById('pixQrCodeImg').src = qrCodeImg;
-                    document.getElementById('pixCopyInput').value = copyCode;
+                    document.getElementById('pixCopyInput').value = data.pix_code;
 
                     document.getElementById('checkoutLoadingStage').classList.add('hidden');
                     document.getElementById('checkoutPixStage').classList.remove('hidden');
                 } else {
-                    alert('Erro ao gerar Pix: ' + (pixData.error || 'Verifique as credenciais ou tente novamente.'));
+                    alert('Erro ao gerar Pix: ' + (data.error || 'Tente novamente.'));
                     document.getElementById('checkoutLoadingStage').classList.add('hidden');
                     document.getElementById('checkoutFormStage').classList.remove('hidden');
                 }
@@ -420,12 +414,6 @@
                 document.getElementById('checkoutLoadingStage').classList.add('hidden');
                 document.getElementById('checkoutFormStage').classList.remove('hidden');
             }
-        }
-
-        function showSuccessStage() {
-            document.getElementById('checkoutPixStage').classList.add('hidden');
-            document.getElementById('checkoutSuccessStage').classList.remove('hidden');
-            if (checkInterval) clearInterval(checkInterval);
         }
 
         function copyPixCode() {
